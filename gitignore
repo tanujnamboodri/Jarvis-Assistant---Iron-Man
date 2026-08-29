@@ -1,0 +1,73 @@
+# =============================================================================
+# UNPUBLISHED WORK — read this before your first commit
+# =============================================================================
+# Your project folder contains your paper draft, benchmark results, and
+# internal notes sitting next to the code. `git add .` in that folder WILL
+# stage all of it unless it's excluded here. Everything in this first block
+# exists because of that — do not remove these patterns without knowing
+# exactly what you're doing.
+JARVIS_Research_Paper.docx
+GPTJARVIS.docx
+JARVIS_REPORT.md
+JARVIS_PROJECT_STATE.md
+Project_JARVIS_Window*.docx
+benchmark_results.json
+benchmark_summary.txt
+benchmark_compare.py
+verify_pipeline.py
+training_log.txt
+FINETUNING_PROBLEMS.md
+*.docx
+Misc/
+files/
+
+# Belt-and-suspenders: run `git status` and eyeball it before every commit
+# until you're confident in this list, especially the first year of the repo.
+
+# --- Secrets & local config -------------------------------------------
+.env
+*.local
+news_config.json
+
+# --- Personal data JARVIS generates at runtime --------------------------
+jarvis_memory.db
+schedule.md
+.jarvis_summaries.json
+.paper_texts.json
+.rag_index.npy
+.rag_index.json
+papers/*.pdf
+papers/*.PDF
+!papers/.gitkeep
+rag_index/
+*.index
+
+# --- Model weights & training artifacts (large binaries, not source) -----
+*.gguf
+*.onnx
+!openwakeword_models/hey_jarvis*.onnx
+adapters/
+fused_model/
+finetune_data/
+Finetune_v1/
+jarvis_finetune_pipeline.svg
+
+# --- Logs ----------------------------------------------------------------
+*.log
+logs/
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# --- macOS -------------------------------------------------------------
+.DS_Store
+
+# --- IDE ---------------------------------------------------------------
+.vscode/
+.idea/

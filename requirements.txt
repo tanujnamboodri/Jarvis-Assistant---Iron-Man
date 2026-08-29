@@ -1,0 +1,37 @@
+# JARVIS — requirements.txt
+#
+# Core is enough to run in --text mode with keyword routing and the LLM
+# conversational fallback. Voice and wake-word are separate tiers because
+# they pull in audio libraries that aren't always trivial to install
+# (PortAudio system dependency, etc.) — see README "Troubleshooting".
+
+# --- Core (required) --------------------------------------------------------
+ollama>=0.3.0
+numpy>=1.24
+requests>=2.31
+python-dotenv>=1.0          # optional but recommended: enables .env config
+
+# --- Voice: speech-to-text ---------------------------------------------------
+faster-whisper>=1.0
+sounddevice>=0.4.6          # needs PortAudio — see README if install fails
+
+# --- Voice: text-to-speech (non-macOS) --------------------------------------
+# macOS users: skip this section, the built-in `say` command is used instead
+# and needs nothing extra.
+pyttsx3>=2.90 ; sys_platform != "darwin"
+
+# --- Wake word ---------------------------------------------------------------
+openwakeword>=0.4.0
+onnxruntime>=1.16
+
+# --- System control (Windows volume control only) ---------------------------
+pycaw>=20230407 ; sys_platform == "win32"
+comtypes>=1.2 ; sys_platform == "win32"
+psutil>=5.9                 # process listing for "close X" — all platforms
+screen-brightness-control>=0.16 ; sys_platform != "darwin"
+
+# --- Smart home (optional — only needed if you use bulb_control.py) --------
+tinytuya>=1.13
+
+# --- UI (desktop window) -----------------------------------------------------
+pywebview>=4.4

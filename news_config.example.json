@@ -1,0 +1,26 @@
+{
+  "_comment": "Copy this file to news_config.json and fill in whatever keys you have. Every section is optional — news_feeds.py degrades to free RSS sources for anything left blank. NEVER commit news_config.json itself (it's in .gitignore) — only this .example file belongs in git.",
+
+  "global_geopolitical": {
+    "provider": "newsapi",
+    "api_key": "PASTE_YOUR_NEWSAPI_KEY_HERE",
+    "query": "geopolitics"
+  },
+  "domestic_india": {
+    "provider": "newsapi",
+    "api_key": "PASTE_YOUR_NEWSAPI_KEY_HERE",
+    "query": "India",
+    "country": "in"
+  },
+  "research": {
+    "arxiv_query": "all:manufacturing",
+    "crossref_query": "tool wear",
+    "crossref_api_key": ""
+  },
+  "manufacturing_rss": [
+    "https://www.themanufacturer.com/feed/"
+  ],
+  "machining_rss": [
+    "https://www.mmsonline.com/rss"
+  ]
+}
