@@ -1,1 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --or:#FF6B00;--or2:#FF9A00;--or3:rgba(255,107,0,0.22);
+  --bl:#0099FF;--bl2:#00C4FF;--bl3:rgba(0,153,255,0.22);
+  --gr:#00E87A;--gr2:rgba(0,232,122,0.22);
+  --bg:#020C18;--glass:rgba(3,10,22,0.82);
+  --td:rgba(150,195,255,0.50);--tm:rgba(180,215,255,0.75);--th:rgba(215,235,255,0.95);
+  --font:'Courier New',monospace;
+}
+body{background:var(--bg);overflow:hidden;font-family:var(--font);color:var(--th)}
+#canvas-wrap{position:fixed;inset:0}
+#grid{position:fixed;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,153,255,0.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,153,255,0.025) 1px,transparent 1px);
+  background-size:52px 52px}
+/* JARVIS targeting reticle around the globe */
+#reticle{position:fixed;top:50%;left:50%;width:620px;height:620px;
+  transform:translate(-50%,-50%);pointer-events:none;
+  border:1px solid rgba(0,153,255,0.10);border-radius:50%}
+#reticle::before{content:'';position:absolute;inset:-18px;
+  border:1px dashed rgba(255,107,0,0.12);border-radius:50%;
+  animation:spin 70s linear infinite}
+#reticle::after{content:'';position:absolute;inset:24px;
+  border:1px solid rgba(0,153,255,0.07);border-radius:50%;
+  animation:spin 45s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tick{position:absolute;width:1px;height:12px;background:rgba(0,196,255,0.35);
+  left:50%;top:-6px;transform-origin:50% 316px}
+#scan{position:fixed;left:0;right:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(0,153,255,0.18),rgba(255,107,0,0.12),transparent);
+  animation:scan 11s linear infinite}
+@keyframes scan{0%{top:-2px}100%{top:100%}}
+#topbar{position:fixed;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--bl) 30%,var(--or) 70%,transparent)}
+#bottombar{position:fixed;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--or) 30%,var(--bl) 70%,transparent)}
 
+/* Corners */
+.corner{position:fixed;width:56px;height:56px;border-color:var(--bl3)}
+.tl{top:14px;left:14px;border-top:1px solid;border-left:1px solid}
+.tr{top:14px;right:14px;border-top:1px solid;border-right:1px solid}
+.bl{bottom:14px;left:14px;border-bottom:1px solid;border-left:1px solid}
+.br{bottom:14px;right:14px;border-bottom:1px solid;border-right:1px solid}
+.corner::before{content:'';position:absolute;width:6px;height:6px;
+  background:var(--bl);border-radius:50%;box-shadow:0 0 8px var(--bl)}
+.tl::before{top:-3px;left:-3px}.tr::before{top:-3px;right:-3px}
+.bl::before{bottom:-3px;left:-3px}.br::before{bottom:-3px;right:-3px}
+
+/* Header */
+#header{position:fixed;top:22px;left:74px;pointer-events:none}
+#title{font-size:16px;letter-spacing:7px;font-weight:700;
+  color:var(--bl2);text-shadow:0 0 24px var(--bl),0 0 48px rgba(0,153,255,0.4)}
+#subtitle{font-size:10px;letter-spacing:3px;margin-top:4px;color:var(--td)}
+#status-block{position:fixed;top:22px;right:74px;text-align:right;pointer-events:none}
+#sys-state{font-size:13px;letter-spacing:4px;color:var(--or2);
+  text-shadow:0 0 20px var(--or),0 0 40px rgba(255,107,0,0.4)}
+#status-dot{font-size:9px;letter-spacing:2px;margin-top:5px;color:var(--td);
+  animation:blink 2.4s ease infinite}
+@keyframes blink{0%,100%{opacity:.9}50%{opacity:.3}}
+
+/* ── PANELS ──────────────────────────────────── */
+.panel{position:fixed;background:var(--glass);
+  backdrop-filter:blur(16px);border-radius:3px;pointer-events:none;overflow:hidden}
+.panel::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(160deg,rgba(255,107,0,0.04),transparent 50%,rgba(0,153,255,0.04))}
+.ph{display:flex;align-items:center;gap:8px;padding:9px 13px;
+  border-bottom:1px solid rgba(255,255,255,0.07)}
+.pd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pl{font-size:10px;letter-spacing:3px;font-weight:700;color:var(--td)}
+.pline{flex:1;height:1px}
+.pb{padding:10px 13px;height:calc(100% - 34px);overflow:hidden}
+
+/* LEFT PANEL */
+#panel-left{left:18px;top:78px;width:268px;bottom:154px;
+  border:1px solid var(--bl3);
+  box-shadow:0 0 32px rgba(0,153,255,0.10),inset 0 0 60px rgba(0,153,255,0.03)}
+#panel-left .pd{background:var(--bl);box-shadow:0 0 8px var(--bl)}
+#panel-left .pline{background:linear-gradient(90deg,var(--bl3),transparent)}
+#panel-left .pb{padding:0;display:flex;flex-direction:column}
+
+/* Health section */
+#health-section{padding:8px 13px 6px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.health-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.hled{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:all 0.5s}
+.hled.ok{background:#00E87A;box-shadow:0 0 7px #00E87A}
+.hled.err{background:#FF4444;box-shadow:0 0 7px #FF4444}
+.hled.chk{background:#FF9A00;box-shadow:0 0 7px #FF9A00;animation:blink 0.8s ease infinite}
+.hname{font-size:10px;letter-spacing:1px;color:var(--tm);flex:1}
+.hval{font-size:9px;letter-spacing:0.5px;color:var(--td)}
+
+/* Log section */
+#log-section{flex:1;overflow:hidden;padding:8px 13px}
+.log-sub{font-size:8px;letter-spacing:3px;color:var(--td);margin-bottom:6px}
+#log-entries{display:flex;flex-direction:column;gap:5px}
+.log-entry{font-size:11px;letter-spacing:0.5px;line-height:1.6;
+  color:var(--td);border-left:2px solid transparent;padding-left:7px;transition:all 0.3s}
+.log-entry.active{color:var(--bl2);border-left-color:var(--bl)}
+.log-time{color:rgba(0,196,255,0.45);font-size:9.5px;display:block;margin-bottom:2px}
+
+/* RIGHT PANEL */
+#panel-right{right:18px;top:78px;width:268px;bottom:154px;
+  border:1px solid var(--or3);pointer-events:auto;
+  box-shadow:0 0 32px rgba(255,107,0,0.10),inset 0 0 60px rgba(255,107,0,0.03)}
+#panel-right .pd{background:var(--or);box-shadow:0 0 8px var(--or)}
+#panel-right .pline{background:linear-gradient(90deg,var(--or3),transparent)}
+#panel-right .pb{padding:8px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,107,0,0.4) transparent;pointer-events:auto}
+#panel-right .pb::-webkit-scrollbar{width:3px}
+#panel-right .pb::-webkit-scrollbar-thumb{background:rgba(255,107,0,0.4);border-radius:2px}
+#intel-entries{display:flex;flex-direction:column;gap:8px}
+
+/* Intel cards */
+.icard{border-radius:2px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);
+  animation:fadeUp 0.45s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ich{display:flex;align-items:center;gap:7px;padding:7px 10px;
+  font-size:10px;letter-spacing:2.5px;font-weight:700}
+.icn{font-size:13px;line-height:1}
+.icb{padding:8px 10px;font-size:12px;line-height:1.7;letter-spacing:0.3px;color:var(--tm)}
+.ibullet{font-size:12px;line-height:1.75;color:var(--tm);padding:0 10px 8px}
+.ibullet li{list-style:none;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.ibullet li::before{content:'›  ';color:var(--or2);font-size:11px}
+
+/* Card themes */
+.c-weather .ich{background:rgba(0,153,255,0.16);color:var(--bl2)}
+.c-weather{border-color:rgba(0,153,255,0.25)}
+.c-research .ich{background:rgba(255,107,0,0.16);color:var(--or2)}
+.c-research{border-color:rgba(255,107,0,0.25)}
+.c-global .ich{background:rgba(0,232,122,0.13);color:#00E87A}
+.c-global{border-color:rgba(0,232,122,0.22)}
+.c-domestic .ich{background:rgba(120,80,255,0.16);color:#C084FC}
+.c-domestic{border-color:rgba(120,80,255,0.25)}
+.c-tech .ich{background:rgba(0,196,255,0.14);color:var(--bl2)}
+.c-tech{border-color:rgba(0,196,255,0.22)}
+.c-jarvis .ich{background:rgba(255,107,0,0.12);color:var(--or2)}
+.c-jarvis{border-color:rgba(255,107,0,0.18)}
+
+/* Weather widget */
+.wbar{display:flex;align-items:center;gap:10px;
+  margin:0 10px 6px;padding:7px 10px;
+  background:rgba(0,153,255,0.08);border:1px solid rgba(0,153,255,0.15);border-radius:2px}
+.wtemp{font-size:26px;font-weight:700;color:var(--bl2);
+  text-shadow:0 0 14px var(--bl);letter-spacing:-1px;line-height:1}
+.wmeta{font-size:9.5px;color:var(--td);letter-spacing:0.5px;line-height:1.7}
+
+/* BOTTOM PANEL */
+#panel-bottom{left:50%;transform:translateX(-50%);
+  bottom:18px;width:480px;height:128px;
+  border:1px solid var(--or3);box-shadow:0 0 36px rgba(255,107,0,0.09)}
+#panel-bottom .pd{background:var(--or);box-shadow:0 0 8px var(--or)}
+#panel-bottom .pline{background:linear-gradient(90deg,var(--or3),transparent)}
+#eq-wrap{display:flex;align-items:flex-end;justify-content:center;
+  gap:3px;height:84px;padding:4px 14px 0}
+.eq-bar{width:7px;border-radius:2px 2px 0 0;min-height:3px;
+  background:linear-gradient(to top,var(--or),var(--or2),rgba(0,196,255,0.7));
+  transition:height 0.07s ease;box-shadow:0 0 5px rgba(255,107,0,0.38)}
+
+/* State label */
+#state-label{position:fixed;bottom:158px;left:0;right:0;
+  text-align:center;pointer-events:none;
+  font-size:11px;letter-spacing:5px;color:var(--td);transition:color 0.5s ease}
+
+/* Connecting */
+#connecting{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  font-size:9px;letter-spacing:2px;color:rgba(0,153,255,0.55);
+  animation:blink 1.5s ease infinite}
+
+/* ── Overlay views (news dashboard / research assistant) ── */
+.view-overlay{position:fixed;inset:0;background:rgba(2,10,22,0.96);
+  backdrop-filter:blur(8px);z-index:50;display:none;
+  flex-direction:column;padding:60px 30px 30px;overflow:hidden}
+.view-overlay.active{display:flex;animation:viewIn 0.4s ease}
+@keyframes viewIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:none}}
+.view-title{font-size:16px;letter-spacing:6px;color:var(--bl2);
+  text-shadow:0 0 20px var(--bl);margin-bottom:4px}
+.view-sub{font-size:9px;letter-spacing:2px;color:var(--td);margin-bottom:18px}
+.view-close{position:absolute;top:24px;right:30px;font-size:10px;
+  letter-spacing:2px;color:var(--or2);cursor:pointer;pointer-events:auto;
+  border:1px solid var(--or3);padding:6px 14px;border-radius:2px}
+.view-close:hover{background:rgba(255,107,0,0.12)}
+
+/* News: 5 columns */
+#news-columns{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+  flex:1;min-height:0}
+.news-col{display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.10);
+  border-radius:3px;overflow:hidden;background:rgba(4,13,28,0.7)}
+.news-col-head{padding:9px 12px;font-size:10px;letter-spacing:2px;font-weight:700;
+  border-bottom:1px solid rgba(255,255,255,0.08)}
+.news-video-wrap{position:relative;width:100%;aspect-ratio:16/9;flex-shrink:0;background:#000}
+.news-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.7}
+.news-video{position:absolute;inset:0;width:100%;height:100%;border:none}
+.news-col-body{flex:1;overflow-y:auto;padding:10px 12px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,107,0,0.3) transparent;
+  pointer-events:auto}
+.news-headline{font-size:11px;line-height:1.6;color:var(--tm);
+  padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.news-headline::before{content:'› ';color:var(--or2)}
+
+/* column accents */
+.nc-geo  .news-col-head{color:#FF7070;background:rgba(255,60,60,0.10)}
+.nc-ind  .news-col-head{color:#C084FC;background:rgba(120,80,255,0.12)}
+.nc-res  .news-col-head{color:#00DCC8;background:rgba(0,220,200,0.10)}
+.nc-mfg  .news-col-head{color:var(--or2);background:rgba(255,107,0,0.12)}
+.nc-mach .news-col-head{color:var(--bl2);background:rgba(0,153,255,0.12)}
+
+/* Research view */
+#research-body{display:grid;grid-template-columns:320px 1fr;gap:18px;flex:1;min-height:0}
+.res-left{display:flex;flex-direction:column;gap:18px;min-height:0}
+.res-panel{border:1px solid rgba(0,220,200,0.22);border-radius:3px;
+  background:rgba(4,13,28,0.7);padding:14px;overflow-y:auto;pointer-events:auto}
+.res-stats{flex-shrink:0}
+.res-right{display:flex;flex-direction:column;min-height:0}
+.res-globe-wrap{flex:1;position:relative;border:1px solid rgba(0,153,255,0.18);
+  border-radius:3px;background:rgba(2,10,22,0.6);min-height:200px;max-height:340px;overflow:hidden}
+#res-globe{width:100%;height:100%;display:block}
+.res-globe-state{position:absolute;bottom:10px;left:0;right:0;text-align:center;
+  font-size:10px;letter-spacing:3px;color:var(--bl2);text-shadow:0 0 12px var(--bl)}
+.res-input-row{display:flex;gap:8px;margin-top:12px;flex-shrink:0}
+#res-input{flex:1;background:rgba(2,10,22,0.9);border:1px solid rgba(0,220,200,0.3);
+  border-radius:3px;padding:11px 14px;color:var(--tm);font-family:inherit;font-size:13px;
+  outline:none}
+#res-input:focus{border-color:var(--bl2);box-shadow:0 0 12px rgba(0,153,255,0.25)}
+#res-send{background:rgba(0,220,200,0.12);border:1px solid rgba(0,220,200,0.4);
+  color:#00DCC8;border-radius:3px;padding:0 22px;font-family:inherit;font-size:11px;
+  letter-spacing:2px;cursor:pointer;transition:all 0.2s}
+#res-send:hover{background:rgba(0,220,200,0.25)}
+#res-send:disabled{opacity:0.4;cursor:wait}
+.res-stat{display:flex;justify-content:space-between;font-size:11px;
+  color:var(--tm);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.res-stat b{color:#00DCC8}
+.res-log{font-size:11px;line-height:1.8;color:var(--tm)}
+.res-log .q{color:var(--or2);margin-top:10px}
+.res-log .a{color:var(--tm)}
+.res-log .src{color:#00DCC8;font-size:10px;letter-spacing:1px;margin:4px 0 10px;opacity:0.75}
+
+/* Schedule view */
+#sched-generated{font-size:9px;letter-spacing:2px;color:var(--td);margin-bottom:10px}
+#sched-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;flex:1;min-height:0}
+.sched-col{display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.10);
+  border-radius:3px;overflow:hidden;background:rgba(4,13,28,0.7)}
+.sched-col-head{padding:9px 12px;font-size:10px;letter-spacing:2px;font-weight:700;
+  border-bottom:1px solid rgba(255,255,255,0.08)}
+.sched-col-body{flex:1;overflow-y:auto;padding:8px 10px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,107,0,0.3) transparent;pointer-events:auto}
+.sched-task{display:flex;align-items:baseline;gap:10px;padding:8px 6px;
+  border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px;line-height:1.5;color:var(--tm)}
+.sched-when{flex-shrink:0;min-width:64px;color:var(--or2);font-size:10px;letter-spacing:1px;opacity:0.9}
+.sched-text{flex:1;color:var(--tm)}
+.sched-task.done .sched-text{text-decoration:line-through;opacity:0.45}
+.sched-pr{flex-shrink:0;font-size:9px;width:16px;height:16px;line-height:16px;text-align:center;
+  border-radius:2px;font-weight:700}
+.sched-pr.high{background:rgba(255,60,60,0.18);color:#FF7070}
+.sched-pr.medium{background:rgba(255,154,0,0.16);color:var(--or2)}
+.sched-pr.low{background:rgba(0,153,255,0.16);color:var(--bl2)}
+.sched-empty{font-size:11px;color:var(--td);padding:14px 6px;font-style:italic}
+.sc-today .sched-col-head{color:var(--gr);background:rgba(0,232,122,0.10)}
+.sc-month .sched-col-head{color:var(--or2);background:rgba(255,107,0,0.12)}
+.sc-year  .sched-col-head{color:var(--bl2);background:rgba(0,153,255,0.12)}
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<div id="reticle"></div>
+<div id="canvas-wrap"></div>
+<div id="topbar"></div><div id="bottombar"></div>
+<div id="scan"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<div id="header">
+  <div id="title">J.A.R.V.I.S</div>
+  <div id="subtitle">GLOBAL INTELLIGENCE SYSTEM · v5.0</div>
+</div>
+<div id="status-block">
+  <div id="sys-state">OFFLINE</div>
+  <div id="status-dot">◈ STANDBY</div>
+</div>
+
+<!-- LEFT: Health + Log -->
+<div class="panel" id="panel-left">
+  <div class="ph"><div class="pd"></div><div class="pl">SYSTEM · STATUS</div><div class="pline"></div></div>
+  <div class="pb">
+    <div id="health-section">
+      <div class="health-row"><div class="hled chk" id="h-audio"></div><div class="hname">Audio System</div><div class="hval" id="hv-audio">INIT…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-mic"></div><div class="hname">Microphone</div><div class="hval" id="hv-mic">INIT…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-stt"></div><div class="hname">Speech Recog.</div><div class="hval" id="hv-stt">INIT…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-internet"></div><div class="hname">Internet</div><div class="hval" id="hv-internet">CHECKING…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-news"></div><div class="hname">News Service</div><div class="hval" id="hv-news">CHECKING…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-weather"></div><div class="hname">Weather Svc</div><div class="hval" id="hv-weather">CHECKING…</div></div>
+      <div class="health-row"><div class="hled chk" id="h-ai"></div><div class="hname">AI Core</div><div class="hval" id="hv-ai">INIT…</div></div>
+    </div>
+    <div id="log-section">
+      <div class="log-sub">ACTIVITY LOG</div>
+      <div id="log-entries">
+        <div class="log-entry active"><span class="log-time">BOOT</span>Initialising JARVIS…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: Intel Feed -->
+<div class="panel" id="panel-right">
+  <div class="ph"><div class="pd"></div><div class="pl">INTEL · FEED</div><div class="pline"></div></div>
+  <div class="pb">
+    <div id="intel-entries">
+      <div class="icard c-jarvis">
+        <div class="ich"><span class="icn">◈</span>AWAITING DATA</div>
+        <div class="icb">Fetching live news and weather…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM: EQ -->
+<div class="panel" id="panel-bottom">
+  <div class="ph"><div class="pd"></div><div class="pl">AUDIO · SPECTRUM</div><div class="pline"></div></div>
+  <div class="pb" style="padding:0"><div id="eq-wrap"></div></div>
+</div>
+
+<div id="state-label">◈ STANDBY</div>
+<div id="connecting">WAITING FOR JARVIS…</div>
+
+<!-- NEWS DASHBOARD VIEW -->
+<!--
+  NEWS COMMAND CENTER — channel/playlist IDs below are the original
+  author's personal picks (Times Now, Firstpost, Science News, a
+  manufacturing playlist). If you're setting up your own JARVIS, swap
+  the `channel=` and `list=` values for whichever YouTube channels/
+  playlists you want — find a channel ID via the channel's "About" page
+  or a lookup tool, and a playlist ID from its URL's `list=` parameter.
+-->
+<div class="view-overlay" id="view-news">
+  <div class="view-close" onclick="setView('globe')">✕ CLOSE — say 'go back'</div>
+  <div class="view-title">NEWS · COMMAND CENTER</div>
+  <div class="view-sub">LIVE FEEDS · 4 SECTORS</div>
+  <div id="news-columns">
+    <div class="news-col nc-geo">
+      <div class="news-col-head">⚔ GEOPOLITICS · Times Now</div>
+      <div class="news-video-wrap">
+        <img class="news-thumb" src="https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=400&h=225&fit=crop" alt="Geopolitics"/>
+        <iframe class="news-video" id="vid-geopolitics" data-src="https://www.youtube.com/embed/live_stream?channel=UC-rEK7l-X_iD8aXkX8azYZA&mute=1" allow="autoplay; encrypted-media" onload="this.previousElementSibling.style.display='none'"></iframe>
+      </div>
+      <div class="news-col-body" id="nc-geopolitics"></div>
+    </div>
+    <div class="news-col nc-ind">
+      <div class="news-col-head">🇮🇳 INDIA · Firstpost</div>
+      <div class="news-video-wrap">
+        <img class="news-thumb" src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=225&fit=crop" alt="India"/>
+        <iframe class="news-video" id="vid-india" data-src="https://www.youtube.com/embed/live_stream?channel=UCz8QaiQxApLq8sLNcszYyJw&mute=1" allow="autoplay; encrypted-media" onload="this.previousElementSibling.style.display='none'"></iframe>
+      </div>
+      <div class="news-col-body" id="nc-india"></div>
+    </div>
+    <div class="news-col nc-res">
+      <div class="news-col-head">🔬 SCIENCE · Science News</div>
+      <div class="news-video-wrap">
+        <img class="news-thumb" src="https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=400&h=225&fit=crop" alt="Science"/>
+        <iframe class="news-video" id="vid-science" data-src="https://www.youtube.com/embed/live_stream?channel=UCBX5er6E37_yWB3gCM32p3g&mute=1" allow="autoplay; encrypted-media" onload="this.previousElementSibling.style.display='none'"></iframe>
+      </div>
+      <div class="news-col-body" id="nc-research"></div>
+    </div>
+    <div class="news-col nc-mfg">
+      <div class="news-col-head">🏭 MANUFACTURING &amp; MACHINING</div>
+      <div class="news-video-wrap">
+        <img class="news-thumb" src="https://images.unsplash.com/photo-1565043666747-69f6646db940?w=400&h=225&fit=crop" alt="Manufacturing"/>
+        <iframe class="news-video" data-src="https://www.youtube.com/embed/videoseries?list=PLRRq_z3WjQn1TuBHB1g3dMBDo9ebs2JHQ&autoplay=1&mute=1" allow="autoplay" onload="this.previousElementSibling.style.display='none'"></iframe>
+      </div>
+      <div class="news-col-body" id="nc-manufacturing"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESEARCH ASSISTANT VIEW -->
+<div class="view-overlay" id="view-research">
+  <div class="view-close" onclick="setView('globe')">✕ CLOSE — say 'go back'</div>
+  <div class="view-title">RESEARCH · ASSISTANT</div>
+  <div class="view-sub">FINE-TUNED TOOL WEAR MODEL · OLLAMA</div>
+  <div id="research-body">
+    <div class="res-left">
+      <div class="res-panel res-stats">
+        <div class="res-stat"><span>Model</span><b>jarvis (Q4_K_M)</b></div>
+        <div class="res-stat"><span>Base</span><b>LLaMA 3.2 3B</b></div>
+        <div class="res-stat"><span>Fine-tune</span><b>MLX LoRA r=8</b></div>
+        <div class="res-stat"><span>Corpus</span><b>70 tool wear PDFs</b></div>
+        <div class="res-stat"><span>Training pairs</span><b>606 QA</b></div>
+        <div class="res-stat"><span>Val loss</span><b>0.538</b></div>
+        <div class="res-stat"><span>RAG</span><b>2770 chunks</b></div>
+        <div class="res-stat"><span>Inference</span><b>100% offline</b></div>
+      </div>
+      <!-- Mini globe showing JARVIS state below the model spec -->
+      <div class="res-globe-wrap">
+        <canvas id="res-globe"></canvas>
+        <div class="res-globe-state" id="res-globe-state">◉ IDLE</div>
+      </div>
+    </div>
+    <div class="res-panel res-right">
+      <div class="res-log" id="research-log">
+        <div class="a">Ask about tool wear, cutting parameters, surface roughness, or any of the 70 papers. Type below or speak — the answer cites its source paper.</div>
+      </div>
+      <div class="res-input-row">
+        <input id="res-input" type="text" placeholder="Type your question, sir…" autocomplete="off"/>
+        <button id="res-send">ASK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE VIEW -->
+<div class="view-overlay" id="view-schedule">
+  <div class="view-close" onclick="setView('globe')">✕ CLOSE — say 'go back'</div>
+  <div class="view-title">SCHEDULE · MISSION BOARD</div>
+  <div class="view-sub">LOCAL FILE · TODAY · THIS MONTH · THIS YEAR</div>
+  <div id="sched-generated"></div>
+  <div id="sched-columns">
+    <div class="sched-col sc-today">
+      <div class="sched-col-head">◉ TODAY</div>
+      <div class="sched-col-body" id="sched-today"></div>
+    </div>
+    <div class="sched-col sc-month">
+      <div class="sched-col-head">▤ THIS MONTH</div>
+      <div class="sched-col-body" id="sched-month"></div>
+    </div>
+    <div class="sched-col sc-year">
+      <div class="sched-col-head">◆ THIS YEAR</div>
+      <div class="sched-col-body" id="sched-year"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// EQ BARS
+// ═══════════════════════════════════════════════════════════
+const EQ_N=52, eqWrap=document.getElementById('eq-wrap');
+const eqBars=[], eqCur=new Array(EQ_N).fill(3);
+let eqT=0;
+for(let i=0;i<EQ_N;i++){
+  const b=document.createElement('div');
+  b.className='eq-bar';b.style.height='3px';
+  eqWrap.appendChild(b);eqBars.push(b);
+}
+// Reticle tick marks every 15°
+const _ret=document.getElementById('reticle');
+for(let a=0;a<360;a+=15){
+  const t=document.createElement('div');
+  t.className='tick';
+  t.style.transform=`rotate(${a}deg)`;
+  _ret.appendChild(t);
+}
+function updateEQ(s){
+  eqT+=0.07;
+  for(let i=0;i<EQ_N;i++){
+    let h=3;
+    if(s==='speaking'){const c=EQ_N/2,d=Math.abs(i-c)/c;h=4+(Math.sin(eqT*6+i*0.4)*0.5+0.5)*Math.pow(1-d*0.55,1.5)*72+Math.random()*10;}
+    else if(s==='listening'){h=3+Math.abs(Math.sin(eqT*1.2+i*0.25))*16;}
+    else if(s==='processing'){h=3+Math.abs(Math.sin(eqT*4+i*0.5))*36;}
+    eqCur[i]+=(h-eqCur[i])*0.14;
+    eqBars[i].style.height=Math.max(3,eqCur[i])+'px';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEALTH PANEL
+// ═══════════════════════════════════════════════════════════
+function setHealth(id,ok,val){
+  const led=document.getElementById('h-'+id);
+  const lbl=document.getElementById('hv-'+id);
+  if(!led||!lbl)return;
+  led.className='hled '+(ok?'ok':'err');
+  lbl.textContent=val;
+}
+// Mark core services on WS connect
+function markCoreOnline(){
+  setHealth('audio',true,'ACTIVE');
+  setHealth('mic',true,'ACTIVE');
+  setHealth('stt',true,'RUNNING');
+  setHealth('ai',true,'jarvis (Q4_K_M)');
+}
+function applyHealthServices(svc){
+  if(svc===undefined)return;
+  setHealth('internet',svc.internet,svc.internet?'CONNECTED':'OFFLINE');
+  setHealth('news',svc.news_svc,svc.news_svc?'CONNECTED':'FAILED');
+  setHealth('weather',svc.weather_svc,svc.weather_svc?'CONNECTED':'FAILED');
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTEL FEED
+// ═══════════════════════════════════════════════════════════
+const intelEl=document.getElementById('intel-entries');
+
+const CARD_CFG={
+  weather:      {cls:'c-weather', icon:'🌡', label:'WEATHER'},
+  global:       {cls:'c-global',  icon:'🌐', label:'GLOBAL NEWS'},
+  geopolitics:  {cls:'c-global',  icon:'⚔',  label:'GEOPOLITICS'},
+  domestic:     {cls:'c-domestic',icon:'📍', label:'DOMESTIC NEWS'},
+  india:        {cls:'c-domestic',icon:'🇮🇳', label:'INDIA NEWS'},
+  technology:   {cls:'c-tech',    icon:'💻', label:'TECH NEWS'},
+  science:      {cls:'c-research',icon:'🔬', label:'RESEARCH NEWS'},
+  research:     {cls:'c-research',icon:'📄', label:'LATEST RESEARCH'},
+  manufacturing:{cls:'c-tech',    icon:'🏭', label:'MANUFACTURING'},
+  machining:    {cls:'c-research',icon:'⚙',  label:'MACHINING TOOLS'},
+  jarvis:       {cls:'c-jarvis',  icon:'◉',  label:'JARVIS'},
+};
+
+function makeCard(cfg,bodyHtml){
+  const c=document.createElement('div');
+  c.className='icard '+(cfg.cls||'c-jarvis');
+  c.innerHTML=`<div class="ich"><span class="icn">${cfg.icon}</span>${cfg.label}</div>${bodyHtml}`;
+  return c;
+}
+
+function addStartupCard(item){
+  const key=item.category;
+  const cfg=CARD_CFG[key]||CARD_CFG.jarvis;
+  let body='';
+  if(key==='weather'&&item.temp!==undefined){
+    body=`<div class="wbar">
+      <div class="wtemp">${item.temp}°C</div>
+      <div class="wmeta">${item.condition||''}<br>
+        Humidity ${item.humidity||'?'}% · Wind ${item.wind||'?'} km/h<br>
+        Budapest, Hungary</div>
+    </div>`;
+  } else if(item.titles&&item.titles.length){
+    const lis=item.titles.slice(0,4).map(t=>`<li>${t}</li>`).join('');
+    body=`<ul class="ibullet">${lis}</ul>`;
+  }
+  const card=makeCard(cfg,body);
+  intelEl.insertBefore(card,intelEl.firstChild);
+  while(intelEl.children.length>8)intelEl.removeChild(intelEl.lastChild);
+}
+
+// Category detection for live spoken text
+let _pendingCat=null;
+function categorise(text){
+  if(_pendingCat){const c=_pendingCat;_pendingCat=null;return c;}
+  const t=text.toLowerCase();
+  // JARVIS system responses — check FIRST to avoid false matches
+  if(/skills available|i currently have|system_control|list_papers|paper_question|research_gaps|replicate_experiment/i.test(text))return'jarvis';
+  if(/i am unable|i cannot|i don.t have|i.m not sure|something went wrong/i.test(text))return'jarvis';
+  // Weather: MUST have temperature number + unit
+  if(/\d+\s*°\s*(c|f)\b|\d+\s*degrees\s*(celsius|fahrenheit)/i.test(text))return'weather';
+  if(/current temperature|weather in \w+|forecast for|clear sky|humidity|wind speed/i.test(text))return'weather';
+  // Research: specific academic language only
+  if(/peer.reviewed|arxiv|findings suggest|study found|researchers found|scientists discovered|published in nature|published in ieee/i.test(text))return'science';
+  if(/tool wear|flank wear|cutting speed|machining|carbide|surface roughness/i.test(text))return'science';
+  // Tech
+  if(/artificial intelligence|machine learning|tech company|software update|robotics/i.test(text))return'technology';
+  // News — explicit phrases first
+  if(/global news|world news|international news|geopolit/i.test(text))return'global';
+  if(/domestic news|national news|hungary news|local news/i.test(text))return'domestic';
+  if(/research news|science news|latest research|latest science/i.test(text))return'science';
+  if(/tech news|technology news|latest tech/i.test(text))return'technology';
+  if(/domestic news|hungary news|latest.*hungary/i.test(text))return'domestic';
+  if(/global news|world news|geopolit|here is what i found|here are the latest|top headlines/i.test(text))return'global';
+  return'jarvis';
+}
+
+function addLiveIntel(text){
+  if(!text||text.length<25)return;
+  const key=categorise(text);
+  const cfg=CARD_CFG[key]||CARD_CFG.jarvis;
+  const body=`<div class="icb">${text.slice(0,200)}${text.length>200?'…':''}</div>`;
+  const card=makeCard(cfg,body);
+  intelEl.insertBefore(card,intelEl.firstChild);
+  while(intelEl.children.length>8)intelEl.removeChild(intelEl.lastChild);
+}
+
+// ═══════════════════════════════════════════════════════════
+// STARTUP HANDLER
+// ═══════════════════════════════════════════════════════════
+function handleStartup(data){
+  // Services
+  applyHealthServices(data.services);
+  // Clear placeholder
+  intelEl.innerHTML='';
+  // Weather card (add first = shows at top after prepending)
+  const items=[];
+  if(data.weather){
+    items.push({category:'weather', ...data.weather});
+  }
+  if(data.news){
+    // Reverse so most important ends up on top after sequential insertBefore
+    [...data.news].reverse().forEach(n=>{
+      items.push({category:n.category, titles:n.titles});
+    });
+  }
+  // Add in order: weather first → ends up at bottom; news on top
+  items.forEach(it=>addStartupCard(it));
+}
+
+// ═══════════════════════════════════════════════════════════
+// THREE.JS SCENE
+// ═══════════════════════════════════════════════════════════
+const container=document.getElementById('canvas-wrap');
+const W=window.innerWidth,H=window.innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0x020C18,1);
+container.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(50,W/H,0.1,100);
+camera.position.set(0,0,7.5);
+const R=2.3;
+const sphereGroup=new THREE.Group();
+scene.add(sphereGroup);
+
+// Continent mask
+function isLand(la,lo){
+  if(la>15&&la<75&&lo>-168&&lo<-52)return true;
+  if(la>-57&&la<13&&lo>-82&&lo<-33)return true;
+  if(la>35&&la<72&&lo>-12&&lo<42)return true;
+  if(la>-36&&la<38&&lo>-18&&lo<52)return true;
+  if(la>5&&la<78&&lo>25&&lo<100)return true;
+  if(la>15&&la<78&&lo>100&&lo<148)return true;
+  if(la>-10&&la<22&&lo>95&&lo<145)return true;
+  if(la>-44&&la<-11&&lo>113&&lo<154)return true;
+  if(la>60&&la<84&&lo>-58&&lo<-17)return true;
+  if(la>30&&la<46&&lo>128&&lo<148)return true;
+  if(la>50&&la<62&&lo>-11&&lo<2)return true;
+  return false;
+}
+
+// Fibonacci sphere dots
+const N=4200,GA=Math.PI*(1+Math.sqrt(5));
+const basePos=new Float32Array(N*3),curPos=new Float32Array(N*3);
+const dotCol=new Float32Array(N*3),dotPhase=new Float32Array(N),dotFreq=new Float32Array(N);
+for(let i=0;i<N;i++){
+  const ph=Math.acos(1-2*(i+0.5)/N),th=GA*i;
+  const x=R*Math.sin(ph)*Math.cos(th),y=R*Math.cos(ph),z=R*Math.sin(ph)*Math.sin(th);
+  basePos[i*3]=x;basePos[i*3+1]=y;basePos[i*3+2]=z;
+  curPos[i*3]=x;curPos[i*3+1]=y;curPos[i*3+2]=z;
+  const la=(Math.PI/2-ph)*180/Math.PI;
+  const lr=th%(2*Math.PI);
+  const lo=(lr>Math.PI?lr-2*Math.PI:lr)*180/Math.PI;
+  if(isLand(la,lo)){dotCol[i*3]=1.0;dotCol[i*3+1]=0.40+Math.random()*0.18;dotCol[i*3+2]=0.0;}
+  else{dotCol[i*3]=0.0;dotCol[i*3+1]=0.42+Math.random()*0.26;dotCol[i*3+2]=0.74+Math.random()*0.26;}
+  dotPhase[i]=Math.random()*Math.PI*2;dotFreq[i]=1.5+Math.random()*5.0;
+}
+const pGeo=new THREE.BufferGeometry();
+const posAttr=new THREE.BufferAttribute(curPos,3);
+posAttr.setUsage(THREE.DynamicDrawUsage);
+pGeo.setAttribute('position',posAttr);
+pGeo.setAttribute('color',new THREE.BufferAttribute(dotCol,3));
+const pMat=new THREE.PointsMaterial({size:0.030,vertexColors:true,
+  blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,opacity:0.85});
+sphereGroup.add(new THREE.Points(pGeo,pMat));
+
+// Halo dots
+const HN=700,hP=new Float32Array(HN*3),hC=new Float32Array(HN*3);
+for(let i=0;i<HN;i++){
+  const p=Math.acos(2*Math.random()-1),t=Math.random()*Math.PI*2,r=R+0.14+Math.random()*0.65;
+  hP[i*3]=r*Math.sin(p)*Math.cos(t);hP[i*3+1]=r*Math.cos(p);hP[i*3+2]=r*Math.sin(p)*Math.sin(t);
+  const b=0.07+Math.random()*0.18;hC[i*3]=0;hC[i*3+1]=b*0.7;hC[i*3+2]=b;
+}
+const hGeo=new THREE.BufferGeometry();
+hGeo.setAttribute('position',new THREE.BufferAttribute(hP,3));
+hGeo.setAttribute('color',new THREE.BufferAttribute(hC,3));
+sphereGroup.add(new THREE.Points(hGeo,new THREE.PointsMaterial({
+  size:0.018,vertexColors:true,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,opacity:0.55})));
+
+// Globe grid lines
+const gMat=new THREE.LineBasicMaterial({color:0x0055AA,transparent:true,opacity:0.07,blending:THREE.AdditiveBlending});
+function latLine(lat){const pts=[];for(let i=0;i<=120;i++){const p=(90-lat)*Math.PI/180,t=(i/120)*Math.PI*2;pts.push(new THREE.Vector3((R+0.004)*Math.sin(p)*Math.cos(t),(R+0.004)*Math.cos(p),(R+0.004)*Math.sin(p)*Math.sin(t)));}return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gMat);}
+function lonLine(lon){const pts=[];for(let i=0;i<=120;i++){const p=(i/120)*Math.PI,t=lon*Math.PI/180;pts.push(new THREE.Vector3((R+0.004)*Math.sin(p)*Math.cos(t),(R+0.004)*Math.cos(p),(R+0.004)*Math.sin(p)*Math.sin(t)));}return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gMat);}
+[-60,-30,0,30,60].forEach(l=>sphereGroup.add(latLine(l)));
+[0,30,60,90,120,150,180,210,240,270,300,330].forEach(l=>sphereGroup.add(lonLine(l)));
+
+// Rings
+function ring(r,n,color,op){const pts=[];for(let i=0;i<=n;i++){const a=(i/n)*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,0));}
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color,transparent:true,opacity:op,blending:THREE.AdditiveBlending}));}
+const rg1=new THREE.Group();rg1.add(ring(R+0.32,180,0xFF6B00,0.42));rg1.rotation.x=Math.PI/3.5;scene.add(rg1);
+const rg2=new THREE.Group();rg2.add(ring(R+0.54,180,0x0099FF,0.32));rg2.rotation.x=-Math.PI/3;rg2.rotation.y=Math.PI/4;scene.add(rg2);
+const rg3=new THREE.Group();rg3.add(ring(R+0.70,120,0xFF9A00,0.16));rg3.rotation.z=Math.PI/5;scene.add(rg3);
+
+// ═══════════════════════════════════════════════════════════
+// STATE MACHINE
+// ═══════════════════════════════════════════════════════════
+const STATES={
+  idle:      {bright:0.55,rot:0.0018,jump:0.00,hz:0.6, ring:0.7, label:'◈ STANDBY',  lc:'rgba(150,195,255,0.50)'},
+  listening: {bright:0.84,rot:0.0030,jump:0.00,hz:1.8, ring:1.0, label:'◎ LISTENING',lc:'rgba(0,196,255,0.90)'},
+  speaking:  {bright:1.00,rot:0.0055,jump:0.34,hz:4.5, ring:1.5, label:'◉ SPEAKING', lc:'rgba(255,150,50,0.95)'},
+  processing:{bright:0.72,rot:0.0110,jump:0.07,hz:7.0, ring:1.2, label:'⊛ THINKING', lc:'rgba(255,180,0,0.88)'},
+  offline:   {bright:0.20,rot:0.0008,jump:0.00,hz:0.3, ring:0.3, label:'◈ OFFLINE',  lc:'rgba(150,195,255,0.35)'},
+};
+let appState='offline',cfg=STATES.offline,curB=0.20,curR=0.0008,curJ=0.00;
+const stateLabel=document.getElementById('state-label');
+const sysState=document.getElementById('sys-state');
+const statusDot=document.getElementById('status-dot');
+const logEl=document.getElementById('log-entries');
+
+function addLog(time,msg){
+  const el=document.createElement('div');
+  el.className='log-entry active';
+  el.innerHTML=`<span class="log-time">${time}</span>${msg}`;
+  logEl.appendChild(el);
+  while(logEl.children.length>14)logEl.removeChild(logEl.firstChild);
+  [...logEl.children].forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+let prevState='offline';
+function applyState(newState,text){
+  prevState=appState;appState=newState;cfg=STATES[newState]||STATES.idle;
+  stateLabel.textContent=cfg.label;stateLabel.style.color=cfg.lc;
+  sysState.textContent=newState.toUpperCase();
+  statusDot.textContent=newState==='offline'?'◈ OFFLINE':'◆ ACTIVE';
+  if(newState==='speaking'&&text){addLiveIntel(text);}
+  const ts=new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const lm={idle:'Ready — awaiting input',listening:'Microphone open — listening',speaking:'Delivering audio response',processing:'Processing query…',offline:'JARVIS offline'};
+  if(newState!==prevState)addLog(ts,lm[newState]||newState);
+  if(currentView==='research') updateResGlobeState(newState);
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════════════════════
+// ── View management ──
+let currentView='globe';
+let _startupNews=null;
+let _lastSchedule=null;
+function setView(v){
+  currentView=v;
+  document.getElementById('view-news').classList.toggle('active', v==='news');
+  document.getElementById('view-research').classList.toggle('active', v==='research');
+  document.getElementById('view-schedule').classList.toggle('active', v==='schedule');
+  if(v==='schedule' && _lastSchedule) renderSchedule(_lastSchedule);
+  // Lazy-load/unload videos: only run iframes while news view is open
+  document.querySelectorAll('#view-news iframe').forEach(f=>{
+    if(v==='news'){ if(!f.src) f.src=f.dataset.src; }
+    else { f.removeAttribute('src'); }
+  });
+  if(v==='research'){
+    // Wait for the overlay to lay out before measuring the canvas
+    setTimeout(()=>{
+      initResGlobe();
+      const i=document.getElementById('res-input'); if(i) i.focus();
+    }, 120);
+  }
+}
+
+// ── Research panel: text input → backend via WebSocket ──
+function submitResQuestion(){
+  const inp=document.getElementById('res-input');
+  const btn=document.getElementById('res-send');
+  const q=(inp.value||'').trim();
+  if(!q) return;
+  // Send to backend — the backend's 'processing' broadcast echoes it once
+  if(ws && ws.readyState===1){
+    ws.send(JSON.stringify({type:'ask', text:q}));
+  }
+  inp.value='';
+  btn.disabled=true;
+  setTimeout(()=>{btn.disabled=false;}, 1500);
+}
+
+// ── Mini globe for the research view (mirrors JARVIS state) ──
+let resGlobeStarted=false, resScene, resCam, resRenderer, resPts, resAnimId, resClock=0;
+function initResGlobe(){
+  if(resGlobeStarted) return;
+  const canvas=document.getElementById('res-globe');
+  if(!canvas || typeof THREE==='undefined') return;
+  // If the canvas has no size yet (overlay still animating), retry shortly
+  if((canvas.clientWidth||0) < 10 || (canvas.clientHeight||0) < 10){
+    setTimeout(initResGlobe, 120);
+    return;
+  }
+  resGlobeStarted=true;
+  let w=canvas.clientWidth||320, h=canvas.clientHeight||240;
+  function _resize(){
+    w=canvas.clientWidth||320; h=canvas.clientHeight||240;
+    if(resRenderer) resRenderer.setSize(w,h,false);
+    if(resCam){ resCam.aspect=w/h; resCam.updateProjectionMatrix(); }
+  }
+  try{
+    resRenderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  }catch(e){
+    console.error('WebGL init failed for research globe:', e);
+    resGlobeStarted=false;
+    return;
+  }
+  resRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  resScene=new THREE.Scene();
+  resCam=new THREE.PerspectiveCamera(50,w/h,0.1,100);resCam.position.z=4.2;
+  const N=1400, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const y=1-(i/(N-1))*2, r=Math.sqrt(1-y*y), th=i*2.399963;
+    pos[i*3]=Math.cos(th)*r;pos[i*3+1]=y;pos[i*3+2]=Math.sin(th)*r;
+    const orange=Math.random()>0.6;
+    col[i*3]=orange?1:0;col[i*3+1]=orange?0.42:0.6;col[i*3+2]=orange?0:1;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const m=new THREE.PointsMaterial({size:0.028,vertexColors:true,
+    blending:THREE.AdditiveBlending,transparent:true,opacity:0.9,depthWrite:false});
+  resPts=new THREE.Points(g,m);resScene.add(resPts);
+  _resize(); window.addEventListener('resize',_resize);
+  (function loop(){
+    resAnimId=requestAnimationFrame(loop);
+    resClock+=0.016;
+    let spin=0.003, scale=1;
+    if(appState==='speaking'){spin=0.012;scale=1+Math.sin(resClock*8)*0.04;}
+    else if(appState==='listening'){spin=0.002;}
+    else if(appState==='processing'){spin=0.02;}
+    resPts.rotation.y+=spin;resPts.rotation.x=0.3;
+    resPts.scale.setScalar(scale);
+    resRenderer.render(resScene,resCam);
+  })();
+}
+function updateResGlobeState(s){
+  const el=document.getElementById('res-globe-state');
+  if(!el) return;
+  const labels={idle:'◉ IDLE',listening:'◉ LISTENING',speaking:'◉ SPEAKING',
+                processing:'◉ THINKING',offline:'◉ OFFLINE'};
+  el.textContent=labels[s]||('◉ '+s.toUpperCase());
+}
+function applyVideoIds(videos){
+  // Swap live_stream embeds for the resolved latest-video embed (reliable)
+  if(!videos) return;
+  const map={geopolitics:'vid-geopolitics', india:'vid-india', science:'vid-science'};
+  for(const [cat,vid] of Object.entries(videos)){
+    const el=document.getElementById(map[cat]);
+    if(el && vid){
+      el.dataset.src=`https://www.youtube.com/embed/${vid}?mute=1&rel=0`;
+    }
+  }
+}
+function populateNewsColumns(newsArr){
+  const map={geopolitics:'nc-geopolitics', global:'nc-geopolitics',
+             india:'nc-india', domestic:'nc-india',
+             research:'nc-research', science:'nc-research',
+             manufacturing:'nc-manufacturing', technology:'nc-manufacturing',
+             machining:'nc-manufacturing'};   // merged into manufacturing column
+  (newsArr||[]).forEach(n=>{
+    const id=map[n.category]; if(!id)return;
+    const col=document.getElementById(id); if(!col)return;
+    (n.titles||[]).forEach(t=>{
+      const d=document.createElement('div');d.className='news-headline';d.textContent=t;
+      col.appendChild(d);
+    });
+  });
+}
+
+// ── Schedule board rendering ──
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function _fmtDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en',{day:'2-digit',month:'short'});
+}
+function fillSchedCol(id,items,isToday){
+  const col=document.getElementById(id); if(!col) return;
+  col.innerHTML='';
+  if(!items || !items.length){
+    const e=document.createElement('div'); e.className='sched-empty';
+    e.textContent = isToday ? 'Nothing scheduled — you are clear, sir.' : 'No items.';
+    col.appendChild(e); return;
+  }
+  items.forEach(t=>{
+    const row=document.createElement('div');
+    row.className='sched-task'+(t.done?' done':'');
+    let when;
+    if(t.anytime){ when='ANYTIME'; }
+    else if(isToday){ when=t.time||'—'; }
+    else { when=_fmtDate(t.date)+(t.time?' '+t.time:''); }
+    const pr=t.priority
+      ? `<span class="sched-pr ${escapeHtml(t.priority)}">${escapeHtml(t.priority[0].toUpperCase())}</span>`
+      : '';
+    row.innerHTML=
+      `<span class="sched-when">${escapeHtml(when)}</span>`+
+      `<span class="sched-text">${escapeHtml(t.text)}</span>`+pr;
+    col.appendChild(row);
+  });
+}
+function renderSchedule(s){
+  if(s) _lastSchedule=s;
+  if(!_lastSchedule) return;
+  const gen=document.getElementById('sched-generated');
+  if(gen) gen.textContent = _lastSchedule.generated ? ('AS OF '+_lastSchedule.generated) : '';
+  fillSchedCol('sched-today', _lastSchedule.today, true);
+  fillSchedCol('sched-month', _lastSchedule.month, false);
+  fillSchedCol('sched-year',  _lastSchedule.year,  false);
+}
+
+const connectingEl=document.getElementById('connecting');
+let ws,retryTimer;
+function connectWS(){
+  // Wire research input listeners once
+  (function(){
+    const inp=document.getElementById('res-input');
+    const btn=document.getElementById('res-send');
+    if(inp && !inp._wired){
+      inp._wired=true;
+      btn.addEventListener('click', submitResQuestion);
+      inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submitResQuestion(); });
+    }
+  })();
+  ws=new WebSocket('ws://localhost:8765');
+  ws.onopen=()=>{
+    connectingEl.style.display='none';
+    markCoreOnline();
+    applyState('idle');
+  };
+  ws.onmessage=({data})=>{
+    try{
+      const d=JSON.parse(data);
+      if(d.state==='startup'){handleStartup(d.startup||{});_startupNews=d.startup?.news;populateNewsColumns(_startupNews);applyVideoIds(d.startup?.videos);return;}
+      if(d.state==='category'){_pendingCat=d.category;return;}
+      if(d.state==='view'){setView(d.text||'globe');return;}
+      if(d.state==='schedule'){try{renderSchedule(JSON.parse(d.text));}catch(e){renderSchedule(d.text||{});}setView('schedule');return;}
+      if(d.state==='sources'&&d.text){
+        const lg=document.getElementById('research-log');
+        if(lg){
+          const el=document.createElement('div');
+          el.className='src';el.textContent='Source: '+d.text;
+          lg.appendChild(el);lg.scrollTop=lg.scrollHeight;
+        }
+        return;
+      }
+      if(d.state==='speaking'&&currentView==='research'&&d.text){
+        const lg=document.getElementById('research-log');
+        // Strip preambles from research log display
+        let txt=d.text
+          .replace(/Here is what I found[.,]*/gi,'')
+          .replace(/Here['’]?s? a \d[^:]{0,60}:\s*/gi,'')
+          .replace(/\s{2,}/g,' ').trim();
+        if(!txt)return;
+        const el=document.createElement('div');el.className='a';el.textContent=txt;
+        lg.appendChild(el);lg.scrollTop=lg.scrollHeight;
+      }
+      if(d.state==='processing'&&currentView==='research'&&d.text){
+        const lg=document.getElementById('research-log');
+        const el=document.createElement('div');el.className='q';el.textContent='» '+d.text;
+        lg.appendChild(el);lg.scrollTop=lg.scrollHeight;
+      }
+      applyState(d.state,d.text||'');
+    }catch(e){}
+  };
+  ws.onclose=()=>{
+    applyState('offline');connectingEl.style.display='block';
+    clearTimeout(retryTimer);retryTimer=setTimeout(connectWS,3000);
+  };
+  ws.onerror=()=>ws.close();
+}
+connectWS();
+
+// ═══════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.008;
+  curB+=(cfg.bright-curB)*0.04;curR+=(cfg.rot-curR)*0.04;curJ+=(cfg.jump-curJ)*0.06;
+  pMat.opacity=curB;
+  sphereGroup.rotation.y+=curR;sphereGroup.rotation.x=Math.sin(t*0.12)*0.04;
+  if(curJ>0.001){
+    for(let i=0;i<N;i++){
+      const jmp=curJ*Math.pow(Math.max(0,Math.sin(t*dotFreq[i]+dotPhase[i])),1.5);
+      const r=R+jmp,nx=basePos[i*3]/R,ny=basePos[i*3+1]/R,nz=basePos[i*3+2]/R;
+      curPos[i*3]=nx*r;curPos[i*3+1]=ny*r;curPos[i*3+2]=nz*r;
+    }
+    posAttr.needsUpdate=true;
+  } else if(cfg.jump===0&&curJ<0.001){
+    for(let i=0;i<N;i++){curPos[i*3]=basePos[i*3];curPos[i*3+1]=basePos[i*3+1];curPos[i*3+2]=basePos[i*3+2];}
+    posAttr.needsUpdate=true;
+  }
+  const rMul=curR/0.002;
+  rg1.rotation.y+=0.010*rMul;rg2.rotation.y-=0.007*rMul;rg3.rotation.y+=0.004*rMul;
+  const pulse=0.5+Math.sin(t*cfg.hz)*0.5;
+  rg1.children[0].material.opacity=0.15+pulse*cfg.ring*0.30;
+  rg2.children[0].material.opacity=0.10+pulse*cfg.ring*0.22;
+  rg3.children[0].material.opacity=0.05+pulse*cfg.ring*0.12;
+  updateEQ(appState);
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{
+  const w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
