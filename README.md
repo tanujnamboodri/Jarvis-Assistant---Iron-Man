@@ -153,6 +153,15 @@ that file for how to wire it into an Automator/Platypus-built `.app`.
 
 ## Known limitations
 
+- **`builtins.py` isn't included yet** — a small skill module for simple
+  time/date/greeting commands. `main.py` loads it if present and prints a
+  one-line warning and continues normally if it's missing (nothing crashes).
+  It's a good first-contribution PR if you want one: follow the `register(registry)`
+  pattern in `schedule.py`.
+- **`vision.py` and `email_notify.py` are documented but not built** (see
+  `main.py`'s own module docstring, which calls them "STUB" packets). They
+  aren't wired into skill loading at all — screenshot/OCR and email/calendar
+  notification are not currently assistant capabilities.
 - **CPU inference is slow, and that's expected.** A 3B model on a laptop CPU
   takes a few seconds per reply. This isn't a bug to be optimized away — it's
   the tradeoff for zero cloud dependency and zero API cost. If you want
